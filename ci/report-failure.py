@@ -14,9 +14,10 @@ if logs:
     log = max(logs, key=lambda p: p.stat().st_mtime)
     lines = log.read_text(errors='replace').splitlines()
     errors = [line for line in lines if re.search(
-        r'error:|fatal:|Error [0-9]|No space left|not found|Cannot fetch|failed',
+        r'error:|fatal:|Error [0-9]|No space left|not found|Cannot fetch|failed|'
+        r'neverallow|syntax error|policy error|checkpolicy|section mismatch',
         line, re.IGNORECASE)]
-    excerpt = '\n'.join((errors or lines)[-20:])[-6000:]
+    excerpt = '\n'.join((errors or lines)[-60:])[-10000:]
     message = f'{log.name}\n{excerpt}'
 else:
     message = 'No build log was created; inspect the failed workflow setup step.'
