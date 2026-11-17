@@ -75,6 +75,10 @@ inline int _FILE_fd(const FILE *__f) { return fileno(__CONST_CAST(FILE*, __f)); 
 
 inline int _FILE_fd(const FILE *__f) { return __f->_fileno; }
 
+#elif defined (__ANDROID__)
+
+inline int _FILE_fd(const FILE *__f) { return ::fileno(__CONST_CAST(FILE*, __f)); }
+
 #elif defined (__BORLANDC__)
 
 inline int _FILE_fd(const FILE *__f) { return __f->fd; }
