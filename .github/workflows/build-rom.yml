@@ -52,6 +52,9 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
+      - name: Expose failure details in GitHub annotations
+        if: failure()
+        run: python3 ci/report-failure.py
       - name: Upload diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4
