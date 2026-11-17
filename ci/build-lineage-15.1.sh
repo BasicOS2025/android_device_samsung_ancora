@@ -33,7 +33,29 @@ export PATH="$rom_tools:$PATH"
 export LC_ALL=C
 export LANG=C
 export PYTHONHASHSEED=0
-unset USE_CCACHE || true
+export USE_CCACHE=1
+export CCACHE_DIR="$RUNNER_TEMP/ancora-ccache"
+export CCACHE_EXEC=/usr/bin/ccache
+ccache -M 2G
+
+# Jack's legacy loopback TLS endpoint needs TLSv1 on current Java 8 updates.
+# Retain all other algorithm restrictions and limit this override to Jack's JVM.
+jack_security="$rom_tools/jack.security"
+python3 - "$JAVA_HOME" "$jack_security" <<'PY'
+import re
+import sys
+from pathlib import Path
+root = Path(sys.argv[1])
+security = next(p for p in (root / 'jre/lib/security/java.security',
+                            root / 'lib/security/java.security') if p.is_file())
+text = re.sub(r'\\\r?\n\s*', '', security.read_text())
+match = re.search(r'^jdk.tls.disabledAlgorithms\s*=\s*(.*)$', text, re.M)
+if not match:
+    raise SystemExit('Java TLS algorithm policy not found')
+algorithms = [part.strip() for part in match[1].split(',')]
+algorithms = [part for part in algorithms if part not in ('TLSv1', 'TLSv1.1')]
+Path(sys.argv[2]).write_text('jdk.tls.disabledAlgorithms=' + ', '.join(algorithms) + '\n')
+PY
 
 cd "$rom_root"
 python3 "$rom_tools/repo" init \
@@ -75,6 +97,7 @@ for build_attempt in $(seq 1 10); do
     make -j3 bacon \
         KERNEL_TOOLCHAIN="$rom_root/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin" \
         KERNEL_TOOLCHAIN_PREFIX=arm-eabi- \
+        JACK_SERVER_VM_ARGUMENTS="-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx3g -Djava.security.properties=$jack_security" \
         'MAKE_FLAGS=HOSTCFLAGS="-O2 -fcommon"' \
         WITH_DEXPREOPT=false 2>&1 | tee "$rom_logs/attempt-$build_attempt.log"
     build_result=${PIPESTATUS[0]}
