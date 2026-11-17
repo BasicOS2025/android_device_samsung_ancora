@@ -97,7 +97,7 @@ for build_attempt in $(seq 1 10); do
     make -j3 bacon \
         KERNEL_TOOLCHAIN="$rom_root/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin" \
         KERNEL_TOOLCHAIN_PREFIX=arm-eabi- \
-        JACK_SERVER_VM_ARGUMENTS="-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx3g -Djava.security.properties=$jack_security" \
+        ANDROID_JACK_VM_ARGS="-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx3g -Djava.security.properties=$jack_security" \
         'MAKE_FLAGS=HOSTCFLAGS="-O2 -fcommon"' \
         WITH_DEXPREOPT=false 2>&1 | tee "$rom_logs/attempt-$build_attempt.log"
     build_result=${PIPESTATUS[0]}
