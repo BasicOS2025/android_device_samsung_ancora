@@ -1,0 +1,62 @@
+name: Ancora LineageOS 15.1 ROM
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ancora-lineage-15.1-rom
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare logs
+        run: mkdir -p build-logs rom-artifacts
+      - name: Free runner disk
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h | tee build-logs/disk-before.txt
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/share/swift
+          df -h | tee build-logs/disk-after.txt
+      - name: Set up Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update 2>&1 | tee build-logs/apt-update.log
+          sudo apt-get install -y --no-install-recommends bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses-dev libssl-dev libxml2-utils lzop python2 rsync schedtool squashfs-tools unzip xsltproc zip zlib1g-dev 2>&1 | tee build-logs/apt-install.log
+      - name: Sync LineageOS sources and build ROM
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash ci/build-lineage-15.1.sh 2>&1 | tee build-logs/build.log
+      - name: Upload ROM and checksums
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ancora-lineage-15.1-rom-${{ github.run_number }}
+          path: rom-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+      - name: Upload diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ancora-build-logs-${{ github.run_number }}
+          path: build-logs/
+          if-no-files-found: warn
+          retention-days: 14
