@@ -10,6 +10,20 @@ rom_artifacts="$GITHUB_WORKSPACE/rom-artifacts"
 rom_tools="$RUNNER_TEMP/ancora-build-tools"
 mkdir -p "$rom_root" "$rom_logs" "$rom_artifacts" "$rom_tools"
 
+progress() {
+    local percent="$1"
+    local phase="$2"
+    printf '[Ancora progress] %s%% - %s\n' "$percent" "$phase"
+    if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+        {
+            printf '### Ancora ROM build progress\n\n'
+            printf '**Estimated: %s%%** — %s\n\n' "$percent" "$phase"
+        } > "$GITHUB_STEP_SUMMARY"
+    fi
+}
+
+progress 5 'Runner and build directories prepared'
+
 finish() {
     local result=$?
     printf 'Exit code: %s\n' "$result" > "$rom_logs/result.txt"
@@ -75,12 +89,14 @@ cp .repo/local_manifests/ancora.xml "$rom_logs/ancora-manifest.xml"
 python3 "$rom_tools/repo" manifest -o "$rom_logs/requested-manifest.xml"
 python3 "$rom_tools/repo" sync -c --no-tags --no-clone-bundle --fail-fast -j4
 python3 "$rom_tools/repo" manifest -r -o "$rom_logs/resolved-manifest.xml"
+progress 20 'LineageOS sources synchronized'
 
 # Old Android build scripts expect Python 2; repo itself runs with Python 3.
 set +u
 source build/envsetup.sh
 lunch lineage_ancora-userdebug
 set -u
+progress 25 'Build environment configured'
 
 # Reuse this runner's downloaded sources when a reviewed device fix is pushed.
 # Only fast-forward commits from the same public lineage-15.1 branch are accepted.
@@ -91,6 +107,7 @@ for build_attempt in $(seq 1 20); do
     device_revision=$(git -C "$device_checkout" rev-parse HEAD)
     printf '%s\n' "$device_revision" > "$rom_logs/device-revision.txt"
     printf 'Build attempt %s, device revision %s\n' "$build_attempt" "$device_revision"
+    progress 25 "Compiling ROM (attempt $build_attempt/20)"
     python3 "$rom_tools/repo" manifest -r -o "$rom_logs/resolved-manifest.xml"
     set +e
     # This kernel has been compiled with GCC 4.8. Keep the same target toolchain.
@@ -103,6 +120,7 @@ for build_attempt in $(seq 1 20); do
     build_result=${PIPESTATUS[0]}
     set -e
     if (( build_result == 0 )); then
+        progress 85 'ROM compilation completed; collecting artifacts'
         break
     fi
     python3 "$GITHUB_WORKSPACE/ci/report-failure.py" "$rom_logs"
@@ -130,5 +148,6 @@ fi
 
 python3 "$device_checkout/ci/collect-rom.py" \
     "$rom_root/out/target/product/ancora" "$rom_artifacts"
+progress 95 'ROM ZIP and checksums collected'
 cp "$rom_logs/resolved-manifest.xml" "$rom_artifacts/"
 printf 'ROM compiled successfully; physical-device boot has not been tested.\n' > "$rom_artifacts/BUILD-NOTES.txt"
