@@ -4160,7 +4160,7 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
 
   switch(configIndex)
   {
-    case OMX_IndexVendorVideoExtraData:
+    case (OMX_INDEXTYPE)OMX_IndexVendorVideoExtraData:
     {
     OMX_VENDOR_EXTRADATATYPE *config = (OMX_VENDOR_EXTRADATATYPE *) configData;
     DEBUG_PRINT_LOW("Index OMX_IndexVendorVideoExtraData called");
@@ -7399,11 +7399,11 @@ int omx_vdec::async_message_process (void *context, void* message)
 
         if (omx->output_use_buffer) {
           DEBUG_PRINT_LOW("FBD: memcpy(%p, %p, %d)", omxhdr->pBuffer,
-            vdec_msg->msgdata.output_frame.bufferaddr +
+            (char *)vdec_msg->msgdata.output_frame.bufferaddr +
             vdec_msg->msgdata.output_frame.offset,
             vdec_msg->msgdata.output_frame.len);
           memcpy ( omxhdr->pBuffer,
-                   (vdec_msg->msgdata.output_frame.bufferaddr +
+                   ((char *)vdec_msg->msgdata.output_frame.bufferaddr +
                     vdec_msg->msgdata.output_frame.offset),
                     vdec_msg->msgdata.output_frame.len );
         }
@@ -9634,7 +9634,7 @@ void omx_vdec::append_extn_extradata(OMX_OTHER_EXTRADATATYPE *extra,
   extra->nVersion.nVersion = OMX_SPEC_VERSION;
   extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
   extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataMP2ExtnData;
-  if (extra->data && p_extn->data && extra->nDataSize)
+  if (extra->nDataSize)
     memcpy(extra->data, p_extn->data, extra->nDataSize);
 }
 
@@ -9646,7 +9646,7 @@ void omx_vdec::append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra,
   extra->nVersion.nVersion = OMX_SPEC_VERSION;
   extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
   extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataMP2UserData;
-  if (extra->data && p_user->data && extra->nDataSize)
+  if (extra->nDataSize)
     memcpy(extra->data, p_user->data, extra->nDataSize);
 }
 
@@ -9658,7 +9658,7 @@ void omx_vdec::append_concealmb_extradata(OMX_OTHER_EXTRADATATYPE *extra,
   extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
   extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataConcealMB;
   extra->nDataSize = p_concealmb->nDataSize;
-  if(extra->data && conceal_mb_data && extra->nDataSize)
+  if(conceal_mb_data && extra->nDataSize)
     memcpy(extra->data, conceal_mb_data, extra->nDataSize);
 }
 
