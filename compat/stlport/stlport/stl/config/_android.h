@@ -17,6 +17,7 @@
 
 // No rtti support
 #define _STLP_NO_RTTI 1
+#define _STLP_NO_TYPEINFO 1
 
 // C library is in the global namespace.
 #define _STLP_VENDOR_GLOBAL_CSTD 1
