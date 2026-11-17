@@ -64,6 +64,9 @@
 // Include most of the gcc settings.
 #include <stl/config/_gcc.h>
 
+// Android's current toolchain does not ship the legacy libstdc++ C++ headers.
+#undef _STLP_USE_NEW_C_HEADERS
+
 // Do not use glibc, Android is missing some things.
 #undef _STLP_USE_GLIBC
 
