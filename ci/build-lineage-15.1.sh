@@ -51,7 +51,11 @@ export PYTHONHASHSEED=0
 export USE_CCACHE=1
 export CCACHE_DIR="$RUNNER_TEMP/ancora-ccache"
 export CCACHE_EXEC=/usr/bin/ccache
-ccache -M 2G
+ccache -M 4G
+build_jobs=$(nproc)
+if (( build_jobs > 4 )); then
+    build_jobs=4
+fi
 
 # Jack's legacy loopback TLS endpoint needs TLSv1 on current Java 8 updates.
 # Retain all other algorithm restrictions and limit this override to Jack's JVM.
@@ -88,7 +92,7 @@ cat > .repo/local_manifests/ancora.xml <<XML
 XML
 cp .repo/local_manifests/ancora.xml "$rom_logs/ancora-manifest.xml"
 python3 "$rom_tools/repo" manifest -o "$rom_logs/requested-manifest.xml"
-python3 "$rom_tools/repo" sync -c --no-tags --no-clone-bundle --fail-fast -j4
+python3 "$rom_tools/repo" sync -c --no-tags --no-clone-bundle --fail-fast -j6
 python3 "$rom_tools/repo" manifest -r -o "$rom_logs/resolved-manifest.xml"
 progress 20 'LineageOS sources synchronized'
 
@@ -112,7 +116,7 @@ for build_attempt in $(seq 1 20); do
     python3 "$rom_tools/repo" manifest -r -o "$rom_logs/resolved-manifest.xml"
     set +e
     # This kernel has been compiled with GCC 4.8. Keep the same target toolchain.
-    make -j3 bacon \
+    make -j"$build_jobs" bacon \
         KERNEL_TOOLCHAIN="$rom_root/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin" \
         KERNEL_TOOLCHAIN_PREFIX=arm-eabi- \
         ANDROID_JACK_VM_ARGS="-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx3g -Djava.security.properties=$jack_security" \
