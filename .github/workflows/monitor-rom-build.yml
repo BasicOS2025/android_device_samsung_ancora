@@ -1,0 +1,44 @@
+name: Monitor Ancora ROM build
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: ancora-rom-build-monitor
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Report latest ROM build state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          build=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build-rom.yml --limit 1 --json status,conclusion,url,updatedAt)
+          status=$(jq -r '.[0].status // "missing"' <<<"$build")
+          conclusion=$(jq -r '.[0].conclusion // ""' <<<"$build")
+          url=$(jq -r '.[0].url // ""' <<<"$build")
+          {
+            echo '## Ancora ROM build monitor'
+            echo
+            echo "Latest build: $url"
+            echo "Status: $status ${conclusion:+($conclusion)}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$status" == missing ]]; then
+            echo 'No ROM build run exists yet.'
+          elif [[ "$status" == completed && "$conclusion" != success ]]; then
+            echo "::error::Latest ROM build ended with $conclusion: $url"
+            exit 1
+          else
+            echo "Latest ROM build is $status ${conclusion:+($conclusion)}: $url"
+          fi
