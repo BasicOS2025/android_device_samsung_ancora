@@ -94,7 +94,7 @@ using _STLP_VENDOR_CSTD::fwrite;
  using _STLP_VENDOR_CSTD::putchar;
 #    endif
 
-using _STLP_VENDOR_CSTD::gets;
+/* C11 removed gets; Android's bionic headers intentionally omit it. */
 #    if !defined (_WIN32_WCE) || (_WIN32_WCE < 400)
 using _STLP_VENDOR_CSTD::perror;
 #    endif
