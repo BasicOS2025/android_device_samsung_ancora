@@ -87,7 +87,7 @@ set -u
 device_checkout="$rom_root/device/samsung/ancora"
 device_remote=https://github.com/BasicOS2025/android_device_samsung_ancora.git
 build_result=1
-for build_attempt in $(seq 1 10); do
+for build_attempt in $(seq 1 20); do
     device_revision=$(git -C "$device_checkout" rev-parse HEAD)
     printf '%s\n' "$device_revision" > "$rom_logs/device-revision.txt"
     printf 'Build attempt %s, device revision %s\n' "$build_attempt" "$device_revision"
@@ -106,7 +106,7 @@ for build_attempt in $(seq 1 10); do
         break
     fi
     python3 "$GITHUB_WORKSPACE/ci/report-failure.py" "$rom_logs"
-    if (( build_attempt == 10 )); then
+    if (( build_attempt == 20 )); then
         exit "$build_result"
     fi
     echo 'Build failed. Waiting up to 10 minutes for a device fix on lineage-15.1.'
