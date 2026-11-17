@@ -1,0 +1,19 @@
+# Initial Oreo policy. Complete using AVC logs from the target device.
+# CM12's removed domains/macros and blanket domain allows are not imported.
+type ancora_rmt, domain;
+type ancora_rmt_exec, exec_type, file_type;
+init_daemon_domain(ancora_rmt)
+
+type ancora_modem_block_device, dev_type;
+type ancora_smem_device, dev_type;
+
+allow ancora_rmt self:capability { setuid setgid };
+allow ancora_rmt ancora_modem_block_device:blk_file rw_file_perms;
+allow ancora_rmt ancora_smem_device:chr_file rw_file_perms;
+allow ancora_rmt self:socket create_socket_perms;
+wakelock_use(ancora_rmt)
+
+type ancora_mac, domain;
+type ancora_mac_exec, exec_type, file_type;
+init_daemon_domain(ancora_mac)
+# The proprietary program's additional accesses require on-device auditing.
