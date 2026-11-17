@@ -14,6 +14,7 @@ progress() {
     local percent="$1"
     local phase="$2"
     printf '[Ancora progress] %s%% - %s\n' "$percent" "$phase"
+    printf '::notice title=Ancora build progress::Estimated %s%% - %s\n' "$percent" "$phase"
     if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
         {
             printf '### Ancora ROM build progress\n\n'
