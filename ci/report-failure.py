@@ -3,6 +3,9 @@
 from pathlib import Path
 import re
 import sys
+import json
+import os
+import urllib.request
 
 log_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('build-logs')
 logs = [p for p in log_dir.glob('*.log') if p.is_file()]
@@ -16,5 +19,32 @@ if logs:
     message = f'{log.name}\n{excerpt}'
 else:
     message = 'No build log was created; inspect the failed workflow setup step.'
-message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-print(f'::error title=Ancora ROM build failure::{message}')
+annotation = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+print(f'::error title=Ancora ROM build failure::{annotation}')
+
+# Native step annotations can be delayed until a long-running job finishes.
+# Publish a bounded check result so the current error is readable during retries.
+token = os.environ.get('GH_TOKEN')
+repository = os.environ.get('GITHUB_REPOSITORY', '')
+revision_file = log_dir / 'device-revision.txt'
+revision = revision_file.read_text().strip() if revision_file.is_file() else os.environ.get('GITHUB_SHA', '')
+if token and re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository) and re.fullmatch(r'[a-f0-9]{40}', revision):
+    payload = {
+        'name': 'Ancora ROM build diagnostic',
+        'head_sha': revision,
+        'status': 'completed',
+        'conclusion': 'failure',
+        'details_url': f'https://github.com/{repository}/actions/runs/{os.environ.get("GITHUB_RUN_ID", "")}',
+        'output': {'title': 'ROM compilation failed', 'summary': message},
+    }
+    request = urllib.request.Request(
+        f'https://api.github.com/repos/{repository}/check-runs',
+        data=json.dumps(payload).encode(),
+        headers={'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json'},
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            print('Published live build diagnostic check:', response.status)
+    except Exception as error:
+        print('Could not publish live diagnostic check:', type(error).__name__)

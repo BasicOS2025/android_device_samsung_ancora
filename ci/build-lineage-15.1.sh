@@ -67,6 +67,7 @@ device_remote=https://github.com/BasicOS2025/android_device_samsung_ancora.git
 build_result=1
 for build_attempt in $(seq 1 10); do
     device_revision=$(git -C "$device_checkout" rev-parse HEAD)
+    printf '%s\n' "$device_revision" > "$rom_logs/device-revision.txt"
     printf 'Build attempt %s, device revision %s\n' "$build_attempt" "$device_revision"
     python3 "$rom_tools/repo" manifest -r -o "$rom_logs/resolved-manifest.xml"
     set +e

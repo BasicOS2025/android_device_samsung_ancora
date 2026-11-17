@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: ancora-lineage-15.1-rom
@@ -40,6 +41,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses-dev libssl-dev libxml2-utils lzop python2 rsync schedtool squashfs-tools unzip xsltproc zip zlib1g-dev 2>&1 | tee build-logs/apt-install.log
       - name: Sync LineageOS sources and build ROM
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           bash ci/build-lineage-15.1.sh 2>&1 | tee build-logs/build.log
@@ -54,6 +57,8 @@ jobs:
           compression-level: 0
       - name: Expose failure details in GitHub annotations
         if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: python3 ci/report-failure.py
       - name: Upload diagnostic logs
         if: always()
