@@ -75,7 +75,7 @@ libmm-vdec-inc          += frameworks/av/include/media/stagefright
 libmm-vdec-inc          += $(call project-path-for,qcom-display)/libqservice
 libmm-vdec-inc          += frameworks/av/media/libmediaplayerservice
 libmm-vdec-inc          += frameworks/native/include/binder
-libmm-vdec-inc          += system/core/libnativebase/include
+libmm-vdec-inc          += frameworks/native/libs/nativebase/include
 libmm-vdec-inc          += $(call project-path-for,qcom-display)/libqdutils
 
 
