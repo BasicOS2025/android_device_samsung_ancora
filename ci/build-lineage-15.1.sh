@@ -45,7 +45,7 @@ cat > .repo/local_manifests/ancora.xml <<XML
 <manifest>
   <remote name="ancora-public" fetch="https://github.com/BasicOS2025/" />
   <project name="android_device_samsung_ancora" path="device/samsung/ancora" remote="ancora-public" revision="$GITHUB_SHA" />
-  <project name="android_vendor_samsung_ancora" path="vendor/samsung/ancora" remote="ancora-public" revision="2e972f80e736ada25946ce1f116e49f3f4ff451c" />
+  <project name="android_vendor_samsung_ancora" path="vendor/samsung/ancora" remote="ancora-public" revision="6a2990b5c3a60de87dcb6d16dc5cb596d7ff8051" />
   <project name="android_kernel_samsung_msm7x30-common" path="kernel/samsung/msm7x30-common" remote="ancora-public" revision="40d204ae063b61956fa578dd6a389b2022fe2c9e" />
 </manifest>
 XML
