@@ -186,6 +186,8 @@ BOARD_CHARGER_ENABLE_SUSPEND := true
 BOARD_CHARGER_SHOW_PERCENTAGE := true
 
 # SELinux
+# Allow the initial Oreo bring-up image to boot while AVC denials are collected.
+BOARD_KERNEL_CMDLINE += androidboot.selinux=permissive
 BOARD_SEPOLICY_DIRS += \
     device/samsung/ancora/sepolicy
 
