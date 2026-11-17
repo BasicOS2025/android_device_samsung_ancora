@@ -111,6 +111,14 @@ TARGET_DISPLAY_INSECURE_MM_HEAP := true
 USE_OPENGL_RENDERER := true
 BOARD_USES_QCOM_HARDWARE := true
 
+# Device-local msm7x30 HAL sources, ported from the matching Samsung CM12.1 tree.
+USE_DEVICE_SPECIFIC_AUDIO := true
+DEVICE_SPECIFIC_AUDIO_PATH := device/samsung/ancora/hardware/audio
+USE_DEVICE_SPECIFIC_DISPLAY := true
+DEVICE_SPECIFIC_DISPLAY_PATH := device/samsung/ancora/hardware/display
+USE_DEVICE_SPECIFIC_MEDIA := true
+DEVICE_SPECIFIC_MEDIA_PATH := device/samsung/ancora/hardware/media
+
 # Camera
 BOARD_USES_LEGACY_OVERLAY := true
 USE_DEVICE_SPECIFIC_CAMERA := true
