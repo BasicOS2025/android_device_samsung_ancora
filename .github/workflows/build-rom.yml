@@ -38,7 +38,15 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update 2>&1 | tee build-logs/apt-update.log
-          sudo apt-get install -y --no-install-recommends bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses-dev libssl-dev libxml2-utils lzop python2 rsync schedtool squashfs-tools unzip xsltproc zip zlib1g-dev 2>&1 | tee build-logs/apt-install.log
+          sudo apt-get install -y --no-install-recommends bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses-dev libssl-dev libxml2-utils lzop python2 rsync schedtool squashfs-tools unzip xsltproc zip zlib1g-dev 2>&1 | tee build-logs/apt-install.log
+      - name: Restore compilation cache
+        id: ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ancora-ccache
+          key: ancora-gcc48-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ancora-gcc48-v1-
       - name: Sync LineageOS sources and build ROM
         shell: bash
         env:
@@ -46,6 +54,12 @@ jobs:
         run: |
           set -euo pipefail
           bash ci/build-lineage-15.1.sh 2>&1 | tee build-logs/build.log
+      - name: Save compilation cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ancora-ccache
+          key: ${{ steps.ccache.outputs.cache-primary-key }}
       - name: Upload ROM and checksums
         if: success()
         uses: actions/upload-artifact@v4
