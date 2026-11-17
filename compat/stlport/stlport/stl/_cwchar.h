@@ -21,7 +21,9 @@
 #    include <stl/_mbstate_t.h>
 #  endif
 #else
-#  if defined (__GNUC__)
+#  if defined (__ANDROID__)
+#    include <stddef.h>
+#  elif defined (__GNUC__)
 #    if defined (_STLP_HAS_INCLUDE_NEXT)
 #      include_next <cstddef>
 #    else
