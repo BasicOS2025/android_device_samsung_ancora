@@ -60,14 +60,51 @@ source build/envsetup.sh
 lunch lineage_ancora-userdebug
 set -u
 
-# This kernel has been compiled with GCC 4.8. Keep the same target toolchain.
-make -j3 bacon \
-    KERNEL_TOOLCHAIN="$rom_root/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin" \
-    KERNEL_TOOLCHAIN_PREFIX=arm-eabi- \
-    'MAKE_FLAGS=HOSTCFLAGS="-O2 -fcommon"' \
-    WITH_DEXPREOPT=false
+# Reuse this runner's downloaded sources when a reviewed device fix is pushed.
+# Only fast-forward commits from the same public lineage-15.1 branch are accepted.
+device_checkout="$rom_root/device/samsung/ancora"
+device_remote=https://github.com/BasicOS2025/android_device_samsung_ancora.git
+build_result=1
+for build_attempt in $(seq 1 10); do
+    device_revision=$(git -C "$device_checkout" rev-parse HEAD)
+    printf 'Build attempt %s, device revision %s\n' "$build_attempt" "$device_revision"
+    python3 "$rom_tools/repo" manifest -r -o "$rom_logs/resolved-manifest.xml"
+    set +e
+    # This kernel has been compiled with GCC 4.8. Keep the same target toolchain.
+    make -j3 bacon \
+        KERNEL_TOOLCHAIN="$rom_root/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin" \
+        KERNEL_TOOLCHAIN_PREFIX=arm-eabi- \
+        'MAKE_FLAGS=HOSTCFLAGS="-O2 -fcommon"' \
+        WITH_DEXPREOPT=false 2>&1 | tee "$rom_logs/attempt-$build_attempt.log"
+    build_result=${PIPESTATUS[0]}
+    set -e
+    if (( build_result == 0 )); then
+        break
+    fi
+    python3 "$GITHUB_WORKSPACE/ci/report-failure.py" "$rom_logs"
+    if (( build_attempt == 10 )); then
+        exit "$build_result"
+    fi
+    echo 'Build failed. Waiting up to 10 minutes for a device fix on lineage-15.1.'
+    new_revision="$device_revision"
+    for revision_poll in $(seq 1 20); do
+        sleep 30
+        new_revision=$(git ls-remote "$device_remote" refs/heads/lineage-15.1 | cut -f1)
+        if [[ -n "$new_revision" && "$new_revision" != "$device_revision" ]]; then
+            break
+        fi
+    done
+    if [[ -z "$new_revision" || "$new_revision" == "$device_revision" ]]; then
+        exit "$build_result"
+    fi
+    git -C "$device_checkout" fetch --depth=50 "$device_remote" refs/heads/lineage-15.1
+    git -C "$device_checkout" merge --ff-only FETCH_HEAD
+done
+if (( build_result != 0 )); then
+    exit "$build_result"
+fi
 
-python3 "$GITHUB_WORKSPACE/ci/collect-rom.py" \
+python3 "$device_checkout/ci/collect-rom.py" \
     "$rom_root/out/target/product/ancora" "$rom_artifacts"
 cp "$rom_logs/resolved-manifest.xml" "$rom_artifacts/"
 printf 'ROM compiled successfully; physical-device boot has not been tested.\n' > "$rom_artifacts/BUILD-NOTES.txt"

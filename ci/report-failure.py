@@ -2,8 +2,10 @@
 """Expose a bounded log excerpt in the check API when artifact storage is unreachable."""
 from pathlib import Path
 import re
+import sys
 
-logs = [p for p in Path('build-logs').glob('*.log') if p.is_file()]
+log_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('build-logs')
+logs = [p for p in log_dir.glob('*.log') if p.is_file()]
 if logs:
     log = max(logs, key=lambda p: p.stat().st_mtime)
     lines = log.read_text(errors='replace').splitlines()

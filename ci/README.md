@@ -5,6 +5,12 @@ başlatılabilir bir derleme sağlar. Ubuntu 22.04 üzerinde Java 8 ve Python 2
 hazırlar; LineageOS 15.1 kaynakları ile device/vendor/kernel ağaçlarını indirir
 ve `lunch lineage_ancora-userdebug`, ardından `make bacon` çalıştırır.
 
+Bir derleme hatasında aynı runner, `lineage-15.1` dalına gelecek düzeltmeyi
+10 dakika bekler. Yeni commit aynı geçmişin devamıysa device ağacını yalnızca
+fast-forward ile günceller ve kaynakları baştan indirmeden yeniden dener.
+En fazla 10 deneme yapılır. Her denemenin hatası check annotations alanına,
+ayrıntılı logu artifact'a kaydedilir. Kernel/vendor revizyonları sabit kalır.
+
 Bu, hâlihazırda doğrulanmış bir ROM derlemesi değildir. Device ağacındaki eski
 msm7x30 kamera/grafik/ses/medya bağımlılıklarının portlanması gerekebilir;
 kaynak indirme, derleme ortamı veya bağımlılık hataları loglarda görünür.
