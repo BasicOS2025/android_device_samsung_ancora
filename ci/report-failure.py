@@ -8,7 +8,8 @@ import os
 import urllib.request
 
 log_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('build-logs')
-logs = [p for p in log_dir.glob('*.log') if p.is_file()]
+attempts = [p for p in log_dir.glob('attempt-*.log') if p.is_file()]
+logs = attempts or [p for p in log_dir.glob('*.log') if p.is_file()]
 if logs:
     log = max(logs, key=lambda p: p.stat().st_mtime)
     lines = log.read_text(errors='replace').splitlines()

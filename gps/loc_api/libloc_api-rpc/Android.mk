@@ -1,7 +1,5 @@
 ifneq ($(BUILD_TINY_ANDROID),true)
 
-$(shell mkdir -p $(OUT)/obj/STATIC_LIBRARIES/libcommondefs-rpc_intermediates/)
-$(shell touch $(OUT)/obj/STATIC_LIBRARIES/libcommondefs-rpc_intermediates/export_includes)
 
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
@@ -26,14 +24,14 @@ LOCAL_SRC_FILES:= $(generated_files)
 #    src/loc_api_cb_server.c
 
 LOCAL_CFLAGS:=-fno-short-enums
-LOCAL_CFLAGS+=-include $(RPC_INC)/loc_api_common.h
+LOCAL_CFLAGS+=-include $(LOCAL_PATH)/$(RPC_INC)/loc_api_common.h
 LOCAL_CFLAGS+=-DDEBUG
 # LOCAL_CFLAGS+=-DDEBUG -DVERBOSE
 
 LOCAL_CFLAGS+=-DADD_XDR_FLOAT -DADD_XDR_BOOL
 
 LOCAL_SHARED_LIBRARIES:= librpc
-LOCAL_STATIC_LIBRARIES:= libcommondefs-rpc
+# Common XDR definitions are compiled from loc_api_common_xdr.c.
 
 LOCAL_COPY_HEADERS_TO:= libloc_api-rpc/inc
 LOCAL_COPY_HEADERS:= \
@@ -50,7 +48,6 @@ LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH) \
     $(LOCAL_PATH)/inc \
     $(LOCAL_PATH)/$(RPC_INC) \
-    $(TARGET_OUT_HEADERS)/libcommondefs-rpc \
     $(TARGET_OUT_HEADERS)/librpc
 
 LOCAL_MODULE:= libloc_api-rpc

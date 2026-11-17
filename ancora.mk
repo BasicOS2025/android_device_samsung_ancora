@@ -170,3 +170,6 @@ PRODUCT_PACKAGES += \
     libstagefright_softomx \
     charger
 
+
+# Runtime required by the supplied Adreno 205 proprietary libraries.
+PRODUCT_PACKAGES += libstlport

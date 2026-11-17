@@ -41,7 +41,6 @@ LOCAL_CFLAGS += \
 LOCAL_C_INCLUDES:= \
     $(TARGET_OUT_HEADERS)/libloc_api-rpc \
     $(TARGET_OUT_HEADERS)/libloc_api-rpc/inc \
-    $(TARGET_OUT_HEADERS)/libcommondefs-rpc/inc \
     $(TARGET_OUT_HEADERS)/librpc
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw

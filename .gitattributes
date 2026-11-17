@@ -1,0 +1,3 @@
+
+# Preserve upstream formatting of the vendored STLport sources.
+compat/stlport/** -whitespace
