@@ -1,7 +1,7 @@
 LOCAL_PATH := $(call my-dir)
 
-GPS_DIR_LIST += $(LOCAL_PATH)/libloc_api-rpc/
-GPS_DIR_LIST += $(LOCAL_PATH)/libloc_api/
+ANCORA_GPS_DIR_LIST := $(LOCAL_PATH)/libloc_api-rpc/
+ANCORA_GPS_DIR_LIST += $(LOCAL_PATH)/libloc_api/
 
 #call the subfolders
-include $(addsuffix Android.mk, $(GPS_DIR_LIST))
+include $(addsuffix Android.mk, $(ANCORA_GPS_DIR_LIST))
