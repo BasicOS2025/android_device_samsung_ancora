@@ -60,7 +60,6 @@ include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
 libmm-vdec-inc          := bionic/libc/include
-libmm-vdec-inc          += bionic/libstdc++/include
 libmm-vdec-inc          += $(LOCAL_PATH)/inc
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += $(call project-path-for,qcom-media)/mm-core/inc
@@ -76,6 +75,7 @@ libmm-vdec-inc          += frameworks/av/include/media/stagefright
 libmm-vdec-inc          += $(call project-path-for,qcom-display)/libqservice
 libmm-vdec-inc          += frameworks/av/media/libmediaplayerservice
 libmm-vdec-inc          += frameworks/native/include/binder
+libmm-vdec-inc          += system/core/libnativebase/include
 libmm-vdec-inc          += $(call project-path-for,qcom-display)/libqdutils
 
 
