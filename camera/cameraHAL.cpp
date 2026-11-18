@@ -32,6 +32,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <new>
+#include <sys/mman.h>
 
 #include <cutils/log.h>
 #include <ui/legacy/Overlay.h>
@@ -194,41 +198,64 @@ static void wrap_queue_buffer_hook(void *data, void *buffer)
     if (heap == 0)
         return;
 
-    int offset = (int)buffer;
+    uintptr_t offset = reinterpret_cast<uintptr_t>(buffer);
+    int width = dev->preview_width;
+    int height = dev->preview_height;
+    if (!dev->gralloc || !heap->base() || heap->base() == MAP_FAILED ||
+            width <= 0 || height <= 0 || (width & 1) || (height & 1) ||
+            (size_t)height > SIZE_MAX / (size_t)width)
+        return;
+    size_t pixels = (size_t)width * (size_t)height;
+    if (pixels > SIZE_MAX / 3)
+        return;
+    size_t frame_size = pixels * 3 / 2;
+    if (offset > heap->getSize() || frame_size > heap->getSize() - offset)
+        return;
     char *frame = (char *)(heap->base()) + offset;
 
-    ALOGV("%s: base:%p offset:%i frame:%p", __FUNCTION__,
+    ALOGV("%s: base:%p offset:%zu frame:%p", __FUNCTION__,
          heap->base(), offset, frame);
 
     int stride;
     void *vaddr;
     buffer_handle_t *buf_handle;
 
-    int width = dev->preview_width;
-    int height = dev->preview_height;
     if (0 != window->dequeue_buffer(window, &buf_handle, &stride)) {
         ALOGE("%s: could not dequeue gralloc buffer", __FUNCTION__);
-        goto skipframe;
+        return;
+    }
+    if (!buf_handle || stride < width ||
+            (size_t)stride > SIZE_MAX / ((size_t)height + height / 2) ||
+            window->lock_buffer(window, buf_handle) != 0) {
+        if (buf_handle)
+            window->cancel_buffer(window, buf_handle);
+        return;
     }
     if (0 == dev->gralloc->lock(dev->gralloc, *buf_handle,
-                                GRALLOC_USAGE_HW_RENDER,
+                                GRALLOC_USAGE_SW_WRITE_OFTEN,
                                 0, 0, width, height, &vaddr)) {
+        if (!vaddr) {
+            dev->gralloc->unlock(dev->gralloc, *buf_handle);
+            window->cancel_buffer(window, buf_handle);
+            return;
+        }
         // the code below assumes YUV, not RGB
-        memcpy(vaddr, frame, width * height * 3 / 2);
+        // Packed NV21 input; gralloc may pad each destination row.
+        for (size_t row = 0; row < (size_t)height + height / 2; ++row)
+            memcpy((char *)vaddr + row * stride, frame + row * width, width);
         ALOGV("%s: copy frame to gralloc buffer", __FUNCTION__);
     } else {
         ALOGE("%s: could not lock gralloc buffer", __FUNCTION__);
-        goto skipframe;
+        window->cancel_buffer(window, buf_handle);
+        return;
     }
 
     dev->gralloc->unlock(dev->gralloc, *buf_handle);
 
     if (0 != window->enqueue_buffer(window, buf_handle)) {
         ALOGE("%s: could not dequeue gralloc buffer", __FUNCTION__);
-        goto skipframe;
+        window->cancel_buffer(window, buf_handle);
     }
-
-skipframe:
 
     ALOGV("%s---: ", __FUNCTION__);
 
@@ -248,18 +275,30 @@ static camera_memory_t *wrap_memory_data(priv_camera_device_t *dev,
     sp<IMemoryHeap> heap;
     camera_memory_t *mem;
 
-    ALOGV("%s+++,dev->request_memory %p", __FUNCTION__,dev->request_memory);
-
-    if (!dev->request_memory)
+    if (!dev || !dev->request_memory || dataPtr == NULL)
         return NULL;
 
+    ALOGV("%s+++,dev->request_memory %p", __FUNCTION__,dev->request_memory);
+
     heap = dataPtr->getMemory(&offset, &size);
+    if (heap == NULL || heap->base() == NULL || heap->base() == MAP_FAILED ||
+            offset < 0 || size == 0 || (size_t)offset > heap->getSize() ||
+            size > heap->getSize() - (size_t)offset)
+        return NULL;
     data = (void *)((char *)(heap->base()) + offset);
 
     ALOGV("%s: data: %p size: %i", __FUNCTION__, data, size);
     ALOGV(" offset: %lu", (unsigned long)offset);
 
     mem = dev->request_memory(-1, size, 1, dev->user);
+
+    if (!mem)
+        return NULL;
+    if (!mem->data || mem->data == MAP_FAILED || mem->size < size || !mem->release) {
+        if (mem->release)
+            mem->release(mem);
+        return NULL;
+    }
 
     ALOGV(" mem:%p,mem->data%p ",  mem,mem->data);
 
@@ -311,7 +350,7 @@ static void wrap_data_callback(int32_t msg_type, const sp<IMemory>& dataPtr,
 
     data = wrap_memory_data(dev, dataPtr);
 
-    if (dev->data_callback)
+    if (data && dev->data_callback)
         dev->data_callback(msg_type, data, 0, NULL, dev->user);
 
     if (NULL != data) {
@@ -338,7 +377,7 @@ static void wrap_data_callback_timestamp(nsecs_t timestamp, int32_t msg_type,
 
     data = wrap_memory_data(dev, dataPtr);
 
-    if (dev->data_timestamp_callback)
+    if (data && dev->data_timestamp_callback)
         dev->data_timestamp_callback(timestamp,msg_type, data, 0, dev->user);
 
     gCameraHals[dev->cameraid]->releaseRecordingFrame(dataPtr); //QiSS ME need release or record will stop
@@ -369,7 +408,7 @@ static void CameraHAL_FixupParams(android::CameraParameters &camParams, priv_cam
     if (dev->cameraid == CAMERA_ID_FRONT) {
         camParams.set(android::CameraParameters::KEY_SUPPORTED_EFFECTS, "");
         camParams.set(android::CameraParameters::KEY_SUPPORTED_FLASH_MODES, "");
-        camParams.set(android::CameraParameters::KEY_SUPPORTED_ISO_MODES, "");
+        camParams.set("iso-values", "");
         camParams.set(android::CameraParameters::KEY_SUPPORTED_SCENE_MODES, "");
         camParams.set(android::CameraParameters::KEY_SUPPORTED_WHITE_BALANCE, "");
         camParams.set(android::CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES, "15");
@@ -380,7 +419,7 @@ static void CameraHAL_FixupParams(android::CameraParameters &camParams, priv_cam
             camParams.set(android::CameraParameters::KEY_MAX_NUM_FOCUS_AREAS, 1);
         }
         camParams.set(android::CameraParameters::KEY_SUPPORTED_FOCUS_MODES, "auto,macro");
-        camParams.set(android::CameraParameters::KEY_SUPPORTED_ISO_MODES, "auto,ISO50,ISO100,ISO200,ISO400");
+        camParams.set("iso-values", "auto,ISO50,ISO100,ISO200,ISO400");
 
         camParams.set(android::CameraParameters::KEY_MAX_ZOOM, "8");
         camParams.set(android::CameraParameters::KEY_ZOOM_RATIOS, "100,125,150,175,200,225,250,275,300");
@@ -420,6 +459,7 @@ static int camera_set_preview_window(struct camera_device *device,
         if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID,
                           (const hw_module_t **)&(dev->gralloc))) {
             ALOGE("%s: Fail on loading gralloc HAL", __FUNCTION__);
+            return -ENODEV;
         }
     }
 
@@ -453,7 +493,8 @@ static int camera_set_preview_window(struct camera_device *device,
 
     ALOGI("%s: preview format %s", __FUNCTION__, str_preview_format);
 
-    window->set_usage(window, GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_HW_RENDER);
+    window->set_usage(window, GRALLOC_USAGE_PRIVATE_MM_HEAP |
+            GRALLOC_USAGE_HW_RENDER | GRALLOC_USAGE_SW_WRITE_OFTEN);
 
     if (window->set_buffers_geometry(window, preview_width,
                                      preview_height, hal_pixel_format)) {
@@ -816,6 +857,8 @@ static char *camera_get_parameters(struct camera_device *device)
 
     params_str8 = camParams.flatten();
     params = (char*) malloc(sizeof(char) * (params_str8.length()+1));
+    if (!params)
+        return NULL;
     strcpy(params, params_str8.string());
 
     ALOGI("%s---", __FUNCTION__);
@@ -888,7 +931,7 @@ static int camera_device_close(hw_device_t *device)
         gCamerasOpen--;
 
         if (dev->base.ops) {
-            free(dev->base.ops);
+            delete dev->base.ops;
         }
 
         if (dev->overlay != NULL) {
@@ -896,7 +939,7 @@ static int camera_device_close(hw_device_t *device)
             dev->overlay = NULL;
         }
 
-        free(dev);
+        delete dev;
     }
 done:
 
@@ -931,17 +974,29 @@ static int camera_device_open(const hw_module_t *module, const char *name,
     camera_device_ops_t *camera_ops = NULL;
     sp<CameraHardwareInterface> camera = NULL;
 
+    if (!device)
+        return -EINVAL;
+    *device = NULL;
+    if (!module || !name || !*name)
+        return -EINVAL;
+
     /* add SIGFPE handler */
     signal(SIGFPE, sigfpe_handle);
 
     ALOGI("camera_device open+++");
 
     if (name != NULL) {
-        cameraid = atoi(name);
+        char *end = NULL;
+        errno = 0;
+        long parsed_id = strtol(name, &end, 10);
+        if (errno || end == name || *end || parsed_id < 0 ||
+                parsed_id >= MAX_CAMERAS_SUPPORTED)
+            return -EINVAL;
+        cameraid = (int)parsed_id;
 
         num_cameras = camera_get_number_of_cameras();
 
-        if(cameraid > num_cameras) {
+        if(cameraid >= num_cameras) {
             ALOGE("camera service provided cameraid out of bounds, "
                  "cameraid = %d, num supported = %d",
                  cameraid, num_cameras);
@@ -949,28 +1004,28 @@ static int camera_device_open(const hw_module_t *module, const char *name,
             goto fail;
         }
 
+        if (gCameraHals[cameraid] != NULL)
+            return -EBUSY;
+
         if (gCamerasOpen >= MAX_CAMERAS_SUPPORTED) {
             ALOGE("maximum number of cameras already open");
             rv = -ENOMEM;
             goto fail;
         }
 
-        priv_camera_device = (priv_camera_device_t*)malloc(sizeof(*priv_camera_device));
+        priv_camera_device = new (std::nothrow) priv_camera_device_t();
         if (!priv_camera_device) {
             ALOGE("camera_device allocation fail");
             rv = -ENOMEM;
             goto fail;
         }
 
-        camera_ops = (camera_device_ops_t*)malloc(sizeof(*camera_ops));
+        camera_ops = new (std::nothrow) camera_device_ops_t();
         if (!camera_ops) {
             ALOGE("camera_ops allocation fail");
             rv = -ENOMEM;
             goto fail;
         }
-
-        memset(priv_camera_device, 0, sizeof(*priv_camera_device));
-        memset(camera_ops, 0, sizeof(*camera_ops));
 
         priv_camera_device->base.common.tag = HARDWARE_DEVICE_TAG;
         priv_camera_device->base.common.version = HARDWARE_DEVICE_API_VERSION(1, 0);
@@ -1022,12 +1077,12 @@ static int camera_device_open(const hw_module_t *module, const char *name,
 
 fail:
     if (priv_camera_device) {
-        free(priv_camera_device);
+        delete priv_camera_device;
         priv_camera_device = NULL;
     }
 
     if (camera_ops) {
-        free(camera_ops);
+        delete camera_ops;
         camera_ops = NULL;
     }
 
@@ -1040,6 +1095,10 @@ fail:
 static int camera_get_number_of_cameras(void)
 {
     int num_cameras = SEC_getNumberOfCameras();
+    if (num_cameras < 0)
+        return 0;
+    if (num_cameras > MAX_CAMERAS_SUPPORTED)
+        num_cameras = MAX_CAMERAS_SUPPORTED;
     ALOGI("%s: number:%i", __FUNCTION__, num_cameras);
 
     return num_cameras;
@@ -1049,7 +1108,11 @@ static int camera_get_camera_info(int camera_id, struct camera_info *info)
 {
     int rv = 0;
 
-    CameraInfo cameraInfo;
+    if (!info || camera_id < 0 || camera_id >= camera_get_number_of_cameras())
+        return -EINVAL;
+
+    memset(info, 0, sizeof(*info));
+    CameraInfo cameraInfo = {};
 
     android::SEC_getCameraInfo(camera_id, &cameraInfo);
 

@@ -19,12 +19,18 @@
 #define ANDROID_HARDWARE_CAMERA_HARDWARE_INTERFACE_H
 
 #include <binder/IMemory.h>
-#include <camera/Camera.h>
 #include <camera/CameraParameters.h>
 
 namespace android {
 
 class Overlay;
+
+// The proprietary adaptor uses the pre-camera2 two-int CameraInfo ABI.
+// Including Oreo Camera.h pulls in camera2/HIDL and a different CameraInfo.
+struct CameraInfo {
+    int facing;
+    int orientation;
+};
 
 /**
  *  The size of image for display.

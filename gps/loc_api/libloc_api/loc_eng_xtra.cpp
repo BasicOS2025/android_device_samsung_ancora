@@ -51,6 +51,7 @@
 
 #define LOC_XTRA_INJECT_DEFAULT_TIMEOUT (3100)
 #define XTRA_BLOCK_SIZE                 (1024)
+#define XTRA_MAX_SIZE                   (255 * XTRA_BLOCK_SIZE)
 
 static int qct_loc_eng_xtra_init (GpsXtraCallbacks* callbacks);
 static int qct_loc_eng_inject_xtra_data(char* data, int length);
@@ -111,16 +112,18 @@ SIDE EFFECTS
 static int qct_loc_eng_inject_xtra_data_one(char* data, int length)
 {
    int     rpc_ret_val = RPC_LOC_API_GENERAL_FAILURE;
-   boolean ret_val = 0;
+   int     ret_val = 0;
    int     total_parts;
-   uint8   part;
-   uint16  part_len;
-   uint16  len_injected;
+   unsigned int part;
+   int     len_injected;
    rpc_loc_ioctl_data_u_type            ioctl_data;
    rpc_loc_ioctl_e_type                 ioctl_type = RPC_LOC_IOCTL_INJECT_PREDICTED_ORBITS_DATA;
    rpc_loc_predicted_orbits_data_s_type *predicted_orbits_data_ptr;
 
-   LOC_LOGD("qct_loc_eng_inject_xtra_data, xtra size = %d, data ptr = 0x%x\n", length, (int) data);
+   if (!data || length <= 0 || length > XTRA_MAX_SIZE)
+      return EINVAL;
+   memset(&ioctl_data, 0, sizeof(ioctl_data));
+   LOC_LOGD("qct_loc_eng_inject_xtra_data, xtra size = %d, data ptr = %p\n", length, data);
 
    predicted_orbits_data_ptr = &ioctl_data.rpc_loc_ioctl_data_u_type_u.predicted_orbits_data;
    predicted_orbits_data_ptr->format_type = RPC_LOC_PREDICTED_ORBITS_XTRA;
@@ -262,19 +265,21 @@ SIDE EFFECTS
 ===========================================================================*/
 static int qct_loc_eng_inject_xtra_data_proxy(char* data, int length)
 {
-   if (!data || !length) return -1;
+   if (!data || length <= 0 || length > XTRA_MAX_SIZE) return -EINVAL;
+
+   char *buf = (char*) malloc(length);
+   if (!buf) return -ENOMEM;
+   memcpy(buf, data, length);
 
    pthread_mutex_lock(&loc_eng_data.xtra_module_data.lock);
 
-   char *buf = (char*) malloc(length);
-   if (buf)
-   {
-      memcpy(buf, data, length);
-      loc_eng_data.xtra_module_data.xtra_data_for_injection = buf;
-      loc_eng_data.xtra_module_data.xtra_data_len = length;
-   }
+   char *old_buf = loc_eng_data.xtra_module_data.xtra_data_for_injection;
+   loc_eng_data.xtra_module_data.xtra_data_for_injection = buf;
+   loc_eng_data.xtra_module_data.xtra_data_len = length;
 
    pthread_mutex_unlock(&loc_eng_data.xtra_module_data.lock);
+
+   free(old_buf);
 
    if (loc_eng_data.engine_status != GPS_STATUS_ENGINE_ON)
    {

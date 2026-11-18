@@ -1,6 +1,8 @@
 name: Ancora LineageOS 15.1 ROM
 
 on:
+  push:
+    branches: [lineage-15.1]
   workflow_dispatch:
 
 permissions:
