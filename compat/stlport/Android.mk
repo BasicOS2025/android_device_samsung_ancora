@@ -49,6 +49,9 @@ LOCAL_SRC_FILES := $(libstlport_src_files)
 
 LOCAL_MODULE := libstlport
 LOCAL_CXX_STL := none
+# Keep STLport's headers/ABI, but resolve new/delete and __cxa_guard_* using
+# Oreo's C++ runtime (libc++ includes libc++abi). "none" omits this dependency.
+LOCAL_SHARED_LIBRARIES := libc++
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 
 LOCAL_CFLAGS := $(libstlport_cflags)
@@ -63,6 +66,7 @@ LOCAL_SRC_FILES := $(libstlport_src_files)
 
 LOCAL_MODULE := libstlport_static
 LOCAL_CXX_STL := none
+LOCAL_SHARED_LIBRARIES := libc++
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 
 LOCAL_CFLAGS := $(libstlport_cflags)
