@@ -51,11 +51,44 @@ export PYTHONHASHSEED=0
 export USE_CCACHE=1
 export CCACHE_DIR="$RUNNER_TEMP/ancora-ccache"
 export CCACHE_EXEC=/usr/bin/ccache
-ccache -M 4G
+export CCACHE_BASEDIR="$rom_root"
+export CCACHE_COMPILERCHECK=content
+export CCACHE_COMPRESS=1
+
+# Public standard Ubuntu runners provide 4 CPUs and 16 GiB RAM. Use every
+# available CPU, keeping memory for Jack, native compilers, linking and the OS.
 build_jobs=$(nproc)
 if (( build_jobs > 4 )); then
     build_jobs=4
 fi
+memory_mib=$(awk '/^MemTotal:/ {print int($2 / 1024)}' /proc/meminfo)
+jack_heap_mib=2048
+if (( memory_mib >= 14000 )); then
+    jack_heap_mib=4096
+elif (( memory_mib >= 10000 )); then
+    jack_heap_mib=3072
+fi
+memory_jobs=$(( (memory_mib - jack_heap_mib - 2048) / 2048 ))
+if (( memory_jobs < 1 )); then
+    memory_jobs=1
+fi
+if (( build_jobs > memory_jobs )); then
+    build_jobs=$memory_jobs
+fi
+sync_jobs=$((build_jobs * 2))
+
+# Leave room for sources and outputs when the runner has less free disk.
+# A compressed 8 GiB ccache fits inside the repository's default 10 GB cap.
+cache_gib=8
+if (( free_kib < 70 * 1024 * 1024 )); then
+    cache_gib=4
+fi
+ccache -M "${cache_gib}Gi"
+ccache -z
+printf 'Runner profile: %s CPUs, %s MiB RAM; make -j%s; Jack %s MiB; sync -j%s; ccache %s GiB\n' \
+    "$(nproc)" "$memory_mib" "$build_jobs" "$jack_heap_mib" "$sync_jobs" "$cache_gib"
+free -m
+ccache -s
 
 # Jack's legacy loopback TLS endpoint needs TLSv1 on current Java 8 updates.
 # Retain all other algorithm restrictions and limit this override to Jack's JVM.
@@ -92,7 +125,7 @@ cat > .repo/local_manifests/ancora.xml <<XML
 XML
 cp .repo/local_manifests/ancora.xml "$rom_logs/ancora-manifest.xml"
 python3 "$rom_tools/repo" manifest -o "$rom_logs/requested-manifest.xml"
-python3 "$rom_tools/repo" sync -c --no-tags --no-clone-bundle --fail-fast -j6
+python3 "$rom_tools/repo" sync -c --no-tags --no-clone-bundle --fail-fast -j"$sync_jobs"
 python3 "$rom_tools/repo" manifest -r -o "$rom_logs/resolved-manifest.xml"
 progress 20 'LineageOS sources synchronized'
 
@@ -123,11 +156,12 @@ for build_attempt in $(seq 1 20); do
     make -j"$build_jobs" bacon \
         KERNEL_TOOLCHAIN="$rom_root/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin" \
         KERNEL_TOOLCHAIN_PREFIX=arm-eabi- \
-        ANDROID_JACK_VM_ARGS="-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx3g -Djava.security.properties=$jack_security" \
+        ANDROID_JACK_VM_ARGS="-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx${jack_heap_mib}m -Djava.security.properties=$jack_security" \
         'MAKE_FLAGS=HOSTCFLAGS="-O2 -fcommon"' \
         WITH_DEXPREOPT=false 2>&1 | tee -a "$rom_logs/attempt-$build_attempt.log"
     build_result=${PIPESTATUS[0]}
     set -e
+    ccache -s
     if (( build_result == 0 )); then
         progress 85 'ROM compilation completed; collecting artifacts'
         break

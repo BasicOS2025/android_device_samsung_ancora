@@ -15,6 +15,23 @@ Her denemeden önce ARM WebView APK'sı Git LFS üzerinden hazırlanır. APK'nı
 manifestte sabitlenen Git revizyonundaki SHA-256 değeri, boyutu ve ZIP bütünlüğü
 doğrulanır; LFS işaretçi metni yanlışlıkla APK olarak imzalama adımına verilmez.
 
+Ücretsiz standart public Ubuntu runner profili en fazla 4 paralel derleme işi,
+16 GB toplam RAM ve 360 dakika çalışma süresidir. Jack için 16 GB runner'da
+4 GiB heap ayrılır; daha küçük makinelerde heap ve paralellik otomatik azaltılır.
+Kaynak senkronizasyonu CPU sayısının iki katı bağlantı kullanır (en fazla 8).
+ccache 8 GiB'a kadar büyür; başlangıçta 70 GiB'tan az boş alan varsa 4 GiB'a
+düşer. Sıkıştırma ve derleyici içerik kontrolü, farklı çalışmalardaki önbellek
+kullanımını destekler. Kullanım istatistikleri her denemede loga yazılır.
+
+Ücretli/larger runner veya ek depolama satın alınmaz. Depodaki varsayılan
+10 GB cache sınırı artırılmaz; eski snapshot'ların tahliyesini GitHub yönetir.
+Kaynak: https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+ve https://docs.github.com/en/actions/reference/limits
+
+Yalnızca yapılandırma güncelleniyorsa commit mesajındaki `[skip ci]` yeni bir
+push derlemesi oluşturmaz. Devam eden çalışma iptal edilmez. Bu profil ayarları
+bir sonraki workflow çalışmasında yüklenir; çalışan shell'in ayarlarını değiştirmez.
+
 Bu, hâlihazırda doğrulanmış bir ROM derlemesi değildir. Device ağacındaki eski
 msm7x30 kamera/grafik/ses/medya bağımlılıklarının portlanması gerekebilir;
 kaynak indirme, derleme ortamı veya bağımlılık hataları loglarda görünür.

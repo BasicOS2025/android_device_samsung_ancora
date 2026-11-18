@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   build:
+    # Standard public-repository runner: 4 CPUs / 16 GB RAM, with a 6-hour limit.
     runs-on: ubuntu-22.04
     timeout-minutes: 360
     steps:
@@ -23,8 +24,10 @@ jobs:
           persist-credentials: false
       - name: Prepare logs
         run: mkdir -p build-logs rom-artifacts
-      - name: Verify WebView preparation logic
-        run: python3 ci/test_prepare_webview.py
+      - name: Validate build helpers
+        run: |
+          bash -n ci/build-lineage-15.1.sh
+          python3 ci/test_prepare_webview.py
       - name: Free runner disk
         shell: bash
         run: |
@@ -51,6 +54,9 @@ jobs:
           key: ancora-gcc48-v1-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ancora-gcc48-v1-
+        env:
+          # Avoid spending too long on a stalled cache segment.
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '5'
       - name: Sync LineageOS sources and build ROM
         shell: bash
         env:
