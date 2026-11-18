@@ -17,8 +17,21 @@ if logs:
         r'error:|fatal:|Error [0-9]|No space left|not found|Cannot fetch|failed|'
         r'neverallow|syntax error|policy error|checkpolicy|section mismatch',
         line, re.IGNORECASE)]
-    excerpt = '\n'.join((errors or lines)[-60:])[-10000:]
-    message = f'{log.name}\n{excerpt}'
+    # APK/ZIP tools often print no "error:" prefix. Keep the command's output
+    # beside each Ninja failure instead of losing the actual cause to filtering.
+    failures = [i for i, line in enumerate(lines) if line.startswith('FAILED:')]
+    if failures:
+        selected = set(range(max(0, len(lines) - 25), len(lines)))
+        for i in failures[-4:]:
+            selected.update(range(i, min(i + 16, len(lines))))
+        details = [lines[i][:1500] for i in sorted(selected)]
+    else:
+        details = (errors or lines)[-60:]
+    excerpt = '\n'.join(details)[-12000:]
+    progress = [re.search(r'\[\s*\d+%\s+\d+/\d+\]', line) for line in lines]
+    progress = [match.group(0) for match in progress if match]
+    last_progress = progress[-1] if progress else 'unavailable'
+    message = f'{log.name}\nLast reported attempt progress: {last_progress}\n{excerpt}'
 else:
     message = 'No build log was created; inspect the failed workflow setup step.'
 annotation = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')

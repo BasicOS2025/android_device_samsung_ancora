@@ -23,6 +23,8 @@ jobs:
           persist-credentials: false
       - name: Prepare logs
         run: mkdir -p build-logs rom-artifacts
+      - name: Verify WebView preparation logic
+        run: python3 ci/test_prepare_webview.py
       - name: Free runner disk
         shell: bash
         run: |
@@ -40,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update 2>&1 | tee build-logs/apt-update.log
-          sudo apt-get install -y --no-install-recommends bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses-dev libssl-dev libxml2-utils lzop python2 rsync schedtool squashfs-tools unzip xsltproc zip zlib1g-dev 2>&1 | tee build-logs/apt-install.log
+          sudo apt-get install -y --no-install-recommends bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gnupg gperf imagemagick lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses-dev libssl-dev libxml2-utils lzop python2 rsync schedtool squashfs-tools unzip xsltproc zip zlib1g-dev 2>&1 | tee build-logs/apt-install.log
       - name: Restore compilation cache
         id: ccache
         uses: actions/cache/restore@v4

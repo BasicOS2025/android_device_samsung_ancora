@@ -112,6 +112,10 @@ for build_attempt in $(seq 1 20); do
     device_revision=$(git -C "$device_checkout" rev-parse HEAD)
     printf '%s\n' "$device_revision" > "$rom_logs/device-revision.txt"
     printf 'Build attempt %s, device revision %s\n' "$build_attempt" "$device_revision"
+    # repo sync can leave LFS pointers in prebuilt projects. Fetch only ARM's
+    # manifest-pinned APK, then check its hash and ZIP before invoking Ninja.
+    python3 "$device_checkout/ci/prepare_webview.py" "$rom_root" \
+        2>&1 | tee "$rom_logs/attempt-$build_attempt.log"
     progress 25 "Compiling ROM (attempt $build_attempt/20)"
     python3 "$rom_tools/repo" manifest -r -o "$rom_logs/resolved-manifest.xml"
     set +e
@@ -121,7 +125,7 @@ for build_attempt in $(seq 1 20); do
         KERNEL_TOOLCHAIN_PREFIX=arm-eabi- \
         ANDROID_JACK_VM_ARGS="-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx3g -Djava.security.properties=$jack_security" \
         'MAKE_FLAGS=HOSTCFLAGS="-O2 -fcommon"' \
-        WITH_DEXPREOPT=false 2>&1 | tee "$rom_logs/attempt-$build_attempt.log"
+        WITH_DEXPREOPT=false 2>&1 | tee -a "$rom_logs/attempt-$build_attempt.log"
     build_result=${PIPESTATUS[0]}
     set -e
     if (( build_result == 0 )); then

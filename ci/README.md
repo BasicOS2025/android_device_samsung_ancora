@@ -8,8 +8,12 @@ ve `lunch lineage_ancora-userdebug`, ardından `make bacon` çalıştırır.
 Bir derleme hatasında aynı runner, `lineage-15.1` dalına gelecek düzeltmeyi
 10 dakika bekler. Yeni commit aynı geçmişin devamıysa device ağacını yalnızca
 fast-forward ile günceller ve kaynakları baştan indirmeden yeniden dener.
-En fazla 10 deneme yapılır. Her denemenin hatası check annotations alanına,
+En fazla 20 deneme yapılır. Her denemenin hatası check annotations alanına,
 ayrıntılı logu artifact'a kaydedilir. Kernel/vendor revizyonları sabit kalır.
+
+Her denemeden önce ARM WebView APK'sı Git LFS üzerinden hazırlanır. APK'nın
+manifestte sabitlenen Git revizyonundaki SHA-256 değeri, boyutu ve ZIP bütünlüğü
+doğrulanır; LFS işaretçi metni yanlışlıkla APK olarak imzalama adımına verilmez.
 
 Bu, hâlihazırda doğrulanmış bir ROM derlemesi değildir. Device ağacındaki eski
 msm7x30 kamera/grafik/ses/medya bağımlılıklarının portlanması gerekebilir;
