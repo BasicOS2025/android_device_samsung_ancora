@@ -36,6 +36,7 @@ libstlport_src_files := \
 
 libstlport_c_includes := \
 	$(LOCAL_PATH)/stlport \
+	bionic/libc/include \
 	bionic \
         bionic/libstdc++/include \
 
