@@ -1823,7 +1823,8 @@ uint32_t AudioHardware::getInputSampleRate(uint32_t sampleRate)
     uint32_t delta;
 
     for (i = 0, prevDelta = 0xFFFFFFFF; i < sizeof(inputSamplingRates)/sizeof(uint32_t); i++, prevDelta = delta) {
-        delta = abs(sampleRate - inputSamplingRates[i]);
+        const uint32_t rate = inputSamplingRates[i];
+        delta = sampleRate >= rate ? sampleRate - rate : rate - sampleRate;
         if (delta > prevDelta) break;
     }
     // i is always > 0 here
@@ -4379,7 +4380,8 @@ ssize_t AudioHardware::AudioStreamInVoip::read( void* buffer, ssize_t bytes)
             int bytesRead = ::read(mFd, &audio_mvs_frame, sizeof(audio_mvs_frame));
             ALOGV("read_bytes = %d mvs bytes \n", bytesRead);
             if (bytesRead > 0) {
-                memcpy(buffer+totalBytesRead,&audio_mvs_frame.voc_pkt, mBufferSize);
+                memcpy(static_cast<char *>(buffer) + totalBytesRead,
+                       &audio_mvs_frame.voc_pkt, mBufferSize);
                 count -= mBufferSize;
                 totalBytesRead += mBufferSize;
                 if(!mFirstread){
