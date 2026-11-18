@@ -170,11 +170,15 @@ for build_attempt in $(seq 1 20); do
     if (( build_attempt == 20 )); then
         exit "$build_result"
     fi
-    echo 'Build failed. Waiting up to 10 minutes for a device fix on lineage-15.1.'
+    echo 'Build failed. Keeping sources and outputs for up to 45 minutes while waiting for a device fix on lineage-15.1.'
     new_revision="$device_revision"
-    for revision_poll in $(seq 1 20); do
+    for revision_poll in $(seq 1 90); do
         sleep 30
-        new_revision=$(git ls-remote "$device_remote" refs/heads/lineage-15.1 | cut -f1)
+        if ! new_revision=$(git ls-remote "$device_remote" refs/heads/lineage-15.1 | cut -f1); then
+            echo 'Temporary revision lookup failure; retaining this runner and retrying.'
+            new_revision="$device_revision"
+            continue
+        fi
         if [[ -n "$new_revision" && "$new_revision" != "$device_revision" ]]; then
             break
         fi
