@@ -310,15 +310,6 @@ static int hwc_eventControl(struct hwc_composer_device_1* dev, int dpy,
             ALOGD_IF (VSYNC_DEBUG, "VSYNC state changed to %s",
                       (enable)?"ENABLED":"DISABLED");
             break;
-#ifdef QCOM_BSP
-        case  HWC_EVENT_ORIENTATION:
-            if(dpy == HWC_DISPLAY_PRIMARY) {
-                Locker::Autolock _l(ctx->mDrawLock);
-                // store the primary display orientation
-                ctx->deviceOrientation = enable;
-            }
-            break;
-#endif
         default:
             ret = -EINVAL;
     }
@@ -720,28 +711,19 @@ int hwc_getDisplayConfigs(struct hwc_composer_device_1* dev, int disp,
 int hwc_getDisplayAttributes(struct hwc_composer_device_1* dev, int disp,
         uint32_t config, const uint32_t* attributes, int32_t* values) {
 
+    if (!dev || !attributes || !values || config != 0)
+        return -EINVAL;
     hwc_context_t* ctx = (hwc_context_t*)(dev);
     disp = getDpyforExternalDisplay(ctx, disp);
+    if (disp < 0 || disp >= HWC_NUM_DISPLAY_TYPES)
+        return -EINVAL;
     //If hotpluggable displays(i.e, HDMI, WFD) are inactive return error
     if( (disp != HWC_DISPLAY_PRIMARY) && !ctx->dpyAttr[disp].connected) {
         return -1;
     }
 
-    //From HWComposer
-    static const uint32_t DISPLAY_ATTRIBUTES[] = {
-        HWC_DISPLAY_VSYNC_PERIOD,
-        HWC_DISPLAY_WIDTH,
-        HWC_DISPLAY_HEIGHT,
-        HWC_DISPLAY_DPI_X,
-        HWC_DISPLAY_DPI_Y,
-        HWC_DISPLAY_SECURE,
-        HWC_DISPLAY_NO_ATTRIBUTE,
-    };
-
-    const int NUM_DISPLAY_ATTRIBUTES = (sizeof(DISPLAY_ATTRIBUTES) /
-            sizeof(DISPLAY_ATTRIBUTES)[0]);
-
-    for (size_t i = 0; i < NUM_DISPLAY_ATTRIBUTES - 1; i++) {
+    // Oreo supplies a sentinel-terminated list, with no vendor secure attribute.
+    for (size_t i = 0; attributes[i] != HWC_DISPLAY_NO_ATTRIBUTE; i++) {
         switch (attributes[i]) {
         case HWC_DISPLAY_VSYNC_PERIOD:
             values[i] = ctx->dpyAttr[disp].vsync_period;
@@ -761,9 +743,6 @@ int hwc_getDisplayAttributes(struct hwc_composer_device_1* dev, int disp,
             break;
         case HWC_DISPLAY_DPI_Y:
             values[i] = (int32_t) (ctx->dpyAttr[disp].ydpi*1000.0);
-            break;
-        case HWC_DISPLAY_SECURE:
-            values[i] = (int32_t) (ctx->dpyAttr[disp].secure);
             break;
         default:
             ALOGE("Unknown display attribute %d",

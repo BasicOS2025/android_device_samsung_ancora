@@ -664,9 +664,8 @@ void setListStats(hwc_context_t *ctx,
         private_handle_t *hnd = (private_handle_t *)layer->handle;
 
 #ifdef QCOM_BSP
-        if (layer->flags & HWC_SCREENSHOT_ANIMATOR_LAYER) {
-            ctx->listStats[dpy].isDisplayAnimating = true;
-        }
+        // The old screenshot-animation bit is HWC_IS_CURSOR_LAYER in Oreo.
+        // Do not interpret cursor layers as screenshot animations.
         if(isSecureDisplayBuffer(hnd)) {
             ctx->listStats[dpy].secureUI = true;
         }
@@ -1107,9 +1106,11 @@ int hwc_sync(hwc_context_t *ctx, hwc_display_contents_1_t* list, int dpy,
     }
 
     for(uint32_t i = 0; i < list->numHwLayers; i++) {
+        const bool isCopybit = i < list->numHwLayers - 1 &&
+                (layerProp[i].mFlags & HWC_COPYBIT);
         if(((list->hwLayers[i].compositionType == HWC_OVERLAY) &&
                 (layerProp[i].mFlags & HWC_MDPCOMP)) ||
-                list->hwLayers[i].compositionType == HWC_BLIT ||
+                isCopybit ||
                 list->hwLayers[i].compositionType == HWC_FRAMEBUFFER_TARGET) {
             //Populate releaseFenceFds.
             if(UNLIKELY(swapzero)) {
@@ -1120,7 +1121,7 @@ int hwc_sync(hwc_context_t *ctx, hwc_display_contents_1_t* list, int dpy,
                 list->hwLayers[i].releaseFenceFd = -1;
             } else if(list->hwLayers[i].releaseFenceFd < 0) {
                 //If rotator has not already populated this field.
-                if(list->hwLayers[i].compositionType == HWC_BLIT) {
+                if(isCopybit) {
                     //For Blit, the app layers should be released when the Blit is
                     //complete. This fd was passed from copybit->draw
                     list->hwLayers[i].releaseFenceFd = dup(fd);

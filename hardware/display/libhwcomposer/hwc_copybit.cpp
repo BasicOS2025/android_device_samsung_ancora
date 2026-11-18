@@ -199,10 +199,9 @@ bool CopyBit::prepare(hwc_context_t *ctx, hwc_display_contents_1_t *list,
             ((hnd->bufferType == BUFFER_TYPE_VIDEO && useCopybitForYUV) ||
             (hnd->bufferType == BUFFER_TYPE_UI && useCopybitForRGB))) {
             layerProp[i].mFlags |= HWC_COPYBIT;
-            if (ctx->mMDP.version <= qdutils::MDP_V4_3)
-                list->hwLayers[i].compositionType = HWC_BLIT;
-            else
-                list->hwLayers[i].compositionType = HWC_OVERLAY;
+            // HWC_BLIT's old value denotes SIDEBAND in Oreo. Keep the engine
+            // choice in HWC_COPYBIT and expose the standard HWC_OVERLAY type.
+            list->hwLayers[i].compositionType = HWC_OVERLAY;
             mCopyBitDraw = true;
         } else {
             ALOGD_IF(DEBUG_COPYBIT,"%s:Can not do copybit, Resetting all the layers marked for it", __FUNCTION__);
@@ -212,8 +211,10 @@ bool CopyBit::prepare(hwc_context_t *ctx, hwc_display_contents_1_t *list,
             //Layer flag should be reset so that SF can compose it on FrameBuffer
             for(int j = ctx->listStats[dpy].numAppLayers-1; j > i; j--) {
                 private_handle_t *hnd1 = (private_handle_t *)list->hwLayers[j].handle;
-                if(hnd1->bufferType == BUFFER_TYPE_UI)
+                if(hnd1->bufferType == BUFFER_TYPE_UI) {
                     list->hwLayers[j].compositionType = HWC_FRAMEBUFFER;
+                    layerProp[j].mFlags &= ~HWC_COPYBIT;
+                }
             }
             break;
         }
