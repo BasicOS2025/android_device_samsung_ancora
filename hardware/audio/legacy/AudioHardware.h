@@ -44,6 +44,18 @@ using android::SortedVector;
 using android::Mutex;
 using android::Condition;
 
+#ifndef AUDIO_OUTPUT_FLAG_LPA
+#define AUDIO_OUTPUT_FLAG_LPA ((audio_output_flags_t)0)
+#endif
+
+struct buf_info {
+    int bufsize;
+    int nBufs;
+    int **buffers;
+};
+
+class AudioEventObserver {};
+
 // ----------------------------------------------------------------------------
 // Kernel driver interface
 //
