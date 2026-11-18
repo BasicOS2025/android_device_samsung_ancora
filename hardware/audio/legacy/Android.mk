@@ -32,9 +32,11 @@ endif
 
 LOCAL_SRC_FILES := \
     AudioHardware.cpp \
+    AudioStreamOutCompat.cpp \
     audio_hw_hal.cpp
 
 LOCAL_SHARED_LIBRARIES := \
+    liblog          \
     libcutils       \
     libutils        \
     libmedia        \
