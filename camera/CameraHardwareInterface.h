@@ -248,7 +248,15 @@ public:
 extern "C" int SEC_getNumberOfCameras();
 extern "C" void SEC_getCameraInfo(int cameraId, struct CameraInfo* cameraInfo);
 /* HAL should return NULL if it fails to open camera hardware. */
+#if defined(__clang__)
+// Preserve the proprietary adaptor's C symbol and C++ smart-pointer return ABI.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
+#endif
 extern "C" sp<CameraHardwareInterface> SEC_openCameraHardware(int cameraId);
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 };  // namespace android
 

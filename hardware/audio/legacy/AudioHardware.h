@@ -57,6 +57,7 @@ struct buf_info {
 // Private legacy LPA callback. Oreo does not expose the Qualcomm LPA hooks.
 class AudioEventObserver {
 public:
+    virtual ~AudioEventObserver() {}
     virtual void postEOS(int64_t delayUs) = 0;
 };
 
