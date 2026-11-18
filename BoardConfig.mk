@@ -65,6 +65,10 @@ BOARD_KERNEL_BASE := 0x00400000
 BOARD_KERNEL_PAGESIZE := 2048
 TARGET_KERNEL_SOURCE := kernel/samsung/msm7x30-common
 TARGET_KERNEL_CONFIG := ancora_defconfig
+# The Oreo recovery exceeds this device's recovery partition with gzip.
+# Enable the kernel decoder before using Lineage's recovery-only LZMA support.
+KERNEL_CONFIG_OVERRIDE += CONFIG_RD_LZMA=y
+LZMA_RAMDISK_TARGETS := recovery
 
 # Wifi related defines
 WIFI_BAND                        := 802_11_ABG
