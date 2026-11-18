@@ -10,7 +10,7 @@ type ancora_smem_device, dev_type;
 allow ancora_rmt self:capability { setuid setgid };
 allow ancora_rmt ancora_modem_block_device:blk_file { getattr open read write };
 allow ancora_rmt ancora_smem_device:chr_file { getattr open read write };
-allow ancora_rmt self:socket create_socket_perms;
+allow ancora_rmt self:socket create_socket_perms_no_ioctl;
 wakelock_use(ancora_rmt)
 
 type ancora_mac, domain;
