@@ -56,9 +56,7 @@
 
 // Define how to include our native headers.
 #define _STLP_NATIVE_HEADER(header) <libstdc++/include/header>
-// Resolve platform C headers explicitly. libc++ is linked for its runtime,
-// but its exported C-header wrappers add overloads already supplied by STLport.
-#define _STLP_NATIVE_C_HEADER(header) <libc/include/header>
+#define _STLP_NATIVE_C_HEADER(header) <../include/header>
 #define _STLP_NATIVE_CPP_C_HEADER(header) <libstdc++/include/header>
 #define _STLP_NATIVE_CPP_RUNTIME_HEADER(header) <libstdc++/include/header>
 #define _STLP_NATIVE_OLD_STREAMS_HEADER(header) <libstdc++/include/header>

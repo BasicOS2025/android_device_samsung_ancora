@@ -34,6 +34,8 @@ libstlport_src_files := \
 	src/c_locale.c \
 	src/cxa.c \
 
+# Platform C headers must precede libc++'s exported C-header wrappers. Keep
+# STLport's native-header fallback for compiler-provided headers like stddef.h.
 libstlport_c_includes := \
 	$(LOCAL_PATH)/stlport \
 	bionic/libc/include \
